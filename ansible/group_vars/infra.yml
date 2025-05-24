@@ -1,5 +1,5 @@
 gitlab_url: "http://192.168.64.4:8090/"
-gitlab_runner_token: "XxWX6ba72SdmzmaeqCFJ"
+gitlab_runner_token: ""
 runner_description: "ansible-registered-runner"
 runner_tags: "shell,ansible"
 executor: "shell"
