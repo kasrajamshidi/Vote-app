@@ -1,0 +1,36 @@
+- name: Add GitLab Runner repo
+  apt_repository:
+    repo: "deb https://packages.gitlab.com/runner/gitlab-runner/ubuntu/ $(lsb_release -cs) main"
+    state: present
+
+- name: Add GitLab Runner GPG Key
+  shell: |
+    curl -fsSL https://packages.gitlab.com/runner/gitlab-runner/gpgkey | sudo apt-key add -
+
+- name: Update APT package index
+  apt:
+    update_cache: yes
+
+- name: Install GitLab Runner
+  apt:
+    name: gitlab-runner
+    state: present
+
+- name: Enable and start GitLab Runner
+  service:
+    name: gitlab-runner
+    state: started
+    enabled: yes
+
+- name: Register GitLab Runner
+  command: >
+    gitlab-runner register
+    --non-interactive
+    --url {{ gitlab_url }}
+    --registration-token {{ gitlab_runner_token }}
+    --description {{ runner_description }}
+    --tag-list {{ runner_tags }}
+    --executor {{ executor }}
+    --docker-image {{ docker_image }}
+  args:
+    creates: /etc/gitlab-runner/config.toml

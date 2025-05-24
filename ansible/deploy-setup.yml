@@ -1,0 +1,14 @@
+- name: Setup deployment
+  hosts: deploy
+  become: true
+
+  roles:
+    - common
+    - k3s
+    - helm 
+    - k3s
+
+
+    
+
+    

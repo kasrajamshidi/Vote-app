@@ -1,0 +1,8 @@
+- name: Setup infrastructure
+  hosts: infra
+  become: true
+
+  roles:
+    - common
+    - docker
+    - gitlab

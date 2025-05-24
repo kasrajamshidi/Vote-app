@@ -1,0 +1,13 @@
+---
+- name: Install base dependencies
+  yum:
+    name:
+      - curl
+      - openssh-server
+      - wget 
+      - vim
+      - lvm2
+    state: present
+
+
+

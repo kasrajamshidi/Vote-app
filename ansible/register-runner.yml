@@ -1,0 +1,8 @@
+- name: Register GitLab Runner
+  hosts: infra
+  become: true
+  vars_files:
+    - group_vars/infra.yml
+  roles:
+    - runner
+
