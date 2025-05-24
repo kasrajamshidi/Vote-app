@@ -1,0 +1,58 @@
+stages:
+  - build
+  - push
+  - deploy
+
+variables:
+  DOCKER_REGISTRY: "192.168.64.4:5000"
+
+build_images:
+  stage: build
+  script:
+    - IMAGE_TAG=$(cat version.txt)
+    - echo "[+] Replacing TAG_TO_REPLACE in vote index.html..."
+    - sed -i "s/TAG_TO_REPLACE/$IMAGE_TAG/g" ./vote/templates/index.html
+    - echo "[+] Building vote image..."
+    - docker build -t $DOCKER_REGISTRY/vote:$IMAGE_TAG ./vote/
+    - docker build -t $DOCKER_REGISTRY/result:$IMAGE_TAG ./result/
+    - docker build -t $DOCKER_REGISTRY/worker:$IMAGE_TAG ./worker/
+  tags:
+    - Runner
+
+push_images:
+  stage: push
+  script:
+    - IMAGE_TAG=$(cat version.txt)
+    - echo "[+] Pushing vote image..."
+    - docker push $DOCKER_REGISTRY/vote:$IMAGE_TAG
+    - docker push $DOCKER_REGISTRY/result:$IMAGE_TAG
+    - docker push $DOCKER_REGISTRY/worker:$IMAGE_TAG
+  tags:
+    - Runner
+  needs:
+    - build_images
+
+deploy_to_k3s:
+  stage: deploy
+  script:
+    - IMAGE_TAG=$(cat version.txt)
+    - echo "[+] Replacing image tags in k3s manifests..."
+    - |
+      VOTE_IMAGE="image: 192.168.64.4:5000/vote:$IMAGE_TAG"
+      RESULT_IMAGE="image: 192.168.64.4:5000/result:$IMAGE_TAG"
+      WORKER_IMAGE="image: 192.168.64.4:5000/worker:$IMAGE_TAG"
+      sed -i "s|image: 192.168.64.4:5000/vote:TAG_TO_REPLACE|$VOTE_IMAGE|g" ./k3s/vote-deployment.yaml
+      sed -i "s|image: 192.168.64.4:5000/result:TAG_TO_REPLACE|$RESULT_IMAGE|g" ./k3s/result-deployment.yaml
+      sed -i "s|image: 192.168.64.4:5000/worker:TAG_TO_REPLACE|$WORKER_IMAGE|g" ./k3s/worker-deployment.yaml
+
+      echo "[+] Replacing version tag in index.html..."
+      sed -i "s|Version : TAG_TO_REPLACE|Version : $IMAGE_TAG|g" ./vote/templates/index.html
+      
+    - echo "[+] Copying manifests to remote server..."
+    - sshpass -p "$K3S_SSH_PASSWORD" scp -o StrictHostKeyChecking=no -r ./k3s/ debian@192.168.64.9:/home/debian/k3suser/
+    - echo "[+] Deploying to K3s..."
+    - sshpass -p "$K3S_SSH_PASSWORD" ssh -o StrictHostKeyChecking=no debian@192.168.64.9 "kubectl apply -f /home/debian/k3suser/k3s"
+  tags:
+    - Runner
+  needs:
+    - push_images
